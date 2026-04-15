@@ -15,6 +15,7 @@ import time
 
 import numpy as np
 from agent_ppo.feature.definition import SampleData, sample_process
+from agent_ppo.conf.conf import Config
 from tools.metrics_utils import get_training_metrics
 from tools.train_env_conf_validate import read_usr_conf
 from common_python.utils.workflow_disaster_recovery import handle_disaster_recovery
@@ -88,6 +89,17 @@ class EpisodeRunner:
 
             # Initial observation / 初始观测处理
             obs_data, remain_info = self.agent.observation_process(env_obs)
+
+            # Feature dimension validation / 特征维度校验
+            expected_dim = Config.DIM_OF_OBSERVATION
+            actual_dim = len(obs_data.feature)
+            if actual_dim != expected_dim:
+                print(f'Expected feature dimension: {expected_dim}, got: {actual_dim}')
+                if self.logger:
+                    self.logger.error(f'Feature dimension mismatch: expected {expected_dim}, got {actual_dim}')
+                # 这里可以选择继续执行或者退出
+                # 为了避免容器僵死，我们选择继续执行，但会记录错误
+                self.logger.warning('Continuing with mismatched feature dimensions - this may cause training issues')
 
             collector = []
             self.episode_cnt += 1

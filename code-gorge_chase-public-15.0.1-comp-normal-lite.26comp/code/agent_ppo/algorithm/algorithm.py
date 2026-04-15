@@ -47,18 +47,51 @@ class Algorithm:
 
         训练入口：对一批 SampleData 执行 PPO 更新。
         """
+        # 提取样本数据
         obs = torch.stack([f.obs for f in list_sample_data]).to(self.device)
         legal_action = torch.stack([f.legal_action for f in list_sample_data]).to(self.device)
         act = torch.stack([f.act for f in list_sample_data]).to(self.device).view(-1, 1)
         old_prob = torch.stack([f.prob for f in list_sample_data]).to(self.device)
         reward = torch.stack([f.reward for f in list_sample_data]).to(self.device)
-        advantage = torch.stack([f.advantage for f in list_sample_data]).to(self.device)
         old_value = torch.stack([f.value for f in list_sample_data]).to(self.device)
-        reward_sum = torch.stack([f.reward_sum for f in list_sample_data]).to(self.device)
 
+        # 前向传播获取价值预测
+        self.model.set_eval_mode()
+        with torch.no_grad():
+            _, value_pred = self.model(obs)
         self.model.set_train_mode()
+
+        # 计算 GAE (Generalized Advantage Estimation)
+        gamma = Config.GAMMA  # 0.99
+        lam = Config.LAMDA  # 0.95
+        advantages = torch.zeros_like(reward)
+        returns = torch.zeros_like(reward)
+        gae = 0.0
+
+        # 从最后一步开始反向计算
+        for t in reversed(range(len(list_sample_data))):
+            if t == len(list_sample_data) - 1:
+                # 最后一步的下一状态价值为0
+                next_value = torch.zeros_like(value_pred[t])
+            else:
+                next_value = value_pred[t + 1]
+            
+            # 计算TD误差
+            delta = reward[t] + gamma * next_value - old_value[t]
+            # 计算GAE
+            gae = delta + gamma * lam * gae
+            # 保存优势函数和回报
+            advantages[t] = gae
+            returns[t] = gae + old_value[t]
+
+        # 对advantages进行均值中心化和标准差归一化
+        adv_mean = advantages.mean()
+        adv_std = advantages.std() + 1e-8  # 避免除零
+        advantages = (advantages - adv_mean) / adv_std
+
         self.optimizer.zero_grad()
 
+        # 重新前向传播获取当前价值预测
         logits, value_pred = self.model(obs)
 
         total_loss, info_list = self._compute_loss(
@@ -67,9 +100,9 @@ class Algorithm:
             legal_action=legal_action,
             old_action=act,
             old_prob=old_prob,
-            advantage=advantage,
+            advantage=advantages,
             old_value=old_value,
-            reward_sum=reward_sum,
+            reward_sum=returns,
             reward=reward,
         )
 

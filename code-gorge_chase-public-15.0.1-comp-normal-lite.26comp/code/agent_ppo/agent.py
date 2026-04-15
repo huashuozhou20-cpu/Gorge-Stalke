@@ -93,7 +93,7 @@ class Agent(BaseAgent):
         """
         obs_data, _ = self.observation_process(env_obs)
         act_data = self.predict([obs_data])
-        return self.action_process(act_data[0], is_stochastic=False)
+        return self.action_process(act_data[0], is_stochastic=False, env_obs=env_obs)
 
     def learn(self, list_sample_data):
         """Train the model.
@@ -148,14 +148,43 @@ class Agent(BaseAgent):
         except Exception as e:
             self.logger.error(f"加载模型失败: {str(e)}")
 
-    def action_process(self, act_data, is_stochastic=True):
+    def action_process(self, act_data, is_stochastic=True, env_obs=None):
         """Unpack ActData to int action and update last_action.
 
         解包 ActData 为 int 动作并记录 last_action。
         """
         action = act_data.action if is_stochastic else act_data.d_action
-        self.last_action = int(action[0])
-        return int(action[0])
+        action_id = int(action[0])
+        
+        # 检查是否为闪现动作且需要判断冷却
+        if 8 <= action_id <= 15 and env_obs is not None:
+            # 从 env_obs 中提取 talent_cooldown
+            try:
+                talent_cooldown = 0
+                # 更具体地捕获可能的 KeyError
+                observation = env_obs["observation"]
+                frame_state = observation["frame_state"]
+                hero = frame_state["heroes"]
+                talent_cooldown = hero.get("flash_cooldown", 0)
+                
+                # 如果闪现冷却为 0，保持闪现动作
+                if talent_cooldown == 0:
+                    # 保持闪现动作
+                    pass
+                else:
+                    # 闪现仍在冷却，降级为普通移动
+                    action_id = action_id - 8
+            except KeyError as e:
+                # 更具体地捕获 KeyError
+                if self.logger:
+                    self.logger.error(f"提取闪现冷却信息时发生 KeyError: {str(e)}")
+            except Exception as e:
+                # 捕获其他异常
+                if self.logger:
+                    self.logger.error(f"提取闪现冷却信息失败: {str(e)}")
+        
+        self.last_action = action_id
+        return action_id
 
     def _run_model(self, feature, legal_action):
         """Run model inference, return logits, value, prob.
