@@ -15,6 +15,7 @@ import torch
 torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
 
+import os
 import numpy as np
 from kaiwudrl.interface.agent import BaseAgent
 
@@ -27,7 +28,7 @@ from agent_ppo.model.model import Model
 
 class Agent(BaseAgent):
     def __init__(self, agent_type="player", device=None, logger=None, monitor=None):
-        torch.manual_seed(0)
+        super().__init__(agent_type, device, logger, monitor)
         self.device = device
         self.model = Model(device).to(self.device)
         self.optimizer = torch.optim.Adam(
@@ -41,7 +42,6 @@ class Agent(BaseAgent):
         self.last_action = -1
         self.logger = logger
         self.monitor = monitor
-        super().__init__(agent_type, device, logger, monitor)
 
     def reset(self, env_obs=None):
         """Reset per-episode state.
@@ -108,9 +108,12 @@ class Agent(BaseAgent):
         保存模型检查点。
         """
         model_file_path = f"{path}/model.ckpt-{str(id)}.pkl"
-        state_dict_cpu = {k: v.clone().cpu() for k, v in self.model.state_dict().items()}
-        torch.save(state_dict_cpu, model_file_path)
-        self.logger.info(f"save model {model_file_path} successfully")
+        try:
+            state_dict_cpu = {k: v.clone().cpu() for k, v in self.model.state_dict().items()}
+            torch.save(state_dict_cpu, model_file_path)
+            self.logger.info(f"save model {model_file_path} successfully")
+        except Exception as e:
+            self.logger.error(f"保存模型失败: {str(e)}")
 
     def load_model(self, path=None, id="1"):
         """Load model checkpoint.
@@ -118,8 +121,32 @@ class Agent(BaseAgent):
         加载模型检查点。
         """
         model_file_path = f"{path}/model.ckpt-{str(id)}.pkl"
-        self.model.load_state_dict(torch.load(model_file_path, map_location=self.device))
-        self.logger.info(f"load model {model_file_path} successfully")
+        if not os.path.exists(model_file_path):
+            self.logger.error(f"模型文件 {model_file_path} 不存在")
+            return
+        try:
+            # 加载模型文件
+            checkpoint = torch.load(model_file_path, map_location=self.device)
+            
+            # 版本兼容性检查
+            if isinstance(checkpoint, dict):
+                # 检查是否包含状态字典
+                if 'model_state_dict' in checkpoint:
+                    self.model.load_state_dict(checkpoint['model_state_dict'])
+                else:
+                    self.model.load_state_dict(checkpoint)
+            else:
+                self.model.load_state_dict(checkpoint)
+                
+            self.logger.info(f"load model {model_file_path} successfully")
+        except FileNotFoundError:
+            self.logger.error(f"模型文件 {model_file_path} 不存在")
+        except torch.nn.modules.module.ModuleNotFoundError as e:
+            self.logger.error(f"模型结构不匹配: {str(e)}")
+        except RuntimeError as e:
+            self.logger.error(f"模型加载失败（参数不匹配）: {str(e)}")
+        except Exception as e:
+            self.logger.error(f"加载模型失败: {str(e)}")
 
     def action_process(self, act_data, is_stochastic=True):
         """Unpack ActData to int action and update last_action.
@@ -139,7 +166,7 @@ class Agent(BaseAgent):
         obs_tensor = torch.tensor(np.array([feature]), dtype=torch.float32).to(self.device)
 
         with torch.no_grad():
-            logits, value = self.model(obs_tensor, inference=True)
+            logits, value = self.model(obs_tensor)
 
         logits_np = logits.cpu().numpy()[0]
         value_np = value.cpu().numpy()[0]

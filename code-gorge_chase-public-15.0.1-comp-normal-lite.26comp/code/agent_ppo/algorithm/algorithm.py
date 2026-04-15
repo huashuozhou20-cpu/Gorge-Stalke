@@ -118,7 +118,7 @@ class Algorithm:
 
         # Policy loss (PPO Clip) / 策略损失
         one_hot = torch.nn.functional.one_hot(old_action[:, 0].long(), self.label_size).float()
-        new_prob = (one_hot * prob_dist).sum(1, keepdim=True)
+        new_prob = (one_hot * prob_dist).sum(1, keepdim=True).clamp(1e-9)
         old_action_prob = (one_hot * old_prob).sum(1, keepdim=True).clamp(1e-9)
         ratio = new_prob / old_action_prob
         adv = advantage.view(-1, 1)

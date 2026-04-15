@@ -15,6 +15,7 @@ import time
 
 import numpy as np
 from agent_ppo.feature.definition import SampleData, sample_process
+from agent_ppo.conf.conf import Config
 from tools.metrics_utils import get_training_metrics
 from tools.train_env_conf_validate import read_usr_conf
 from common_python.utils.workflow_disaster_recovery import handle_disaster_recovery
@@ -82,15 +83,20 @@ class EpisodeRunner:
             if handle_disaster_recovery(env_obs, self.logger):
                 continue
 
-            # Reset agent & load latest model / 重置 Agent 并加载最新模型
+            # Reset agent / 重置 Agent
             self.agent.reset(env_obs)
-            self.agent.load_model(id="latest")
+
+            # Increment episode counter / 递增局数计数器
+            self.episode_cnt += 1
+
+            # Load latest model periodically / 定期加载最新模型
+            if self.episode_cnt % Config.MODEL_LOAD_INTERVAL == 0:
+                self.agent.load_model(id="latest")
 
             # Initial observation / 初始观测处理
             obs_data, remain_info = self.agent.observation_process(env_obs)
 
             collector = []
-            self.episode_cnt += 1
             done = False
             step = 0
             total_reward = 0.0

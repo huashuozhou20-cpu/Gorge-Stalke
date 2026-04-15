@@ -20,7 +20,8 @@ class Config:
     USE_CNN = False
     VIEW_SIZE = 50 if USE_CNN else 0
 
-    FEATURE_VECTOR_SHAPE = (153,)
+    # hero:4D, monster:5D*2, treasure:6D, map:49D, legal:8D, progress:2D, vel:4D = 79D
+    FEATURE_VECTOR_SHAPE = (79,)
     FEATURE_IMAGE_SHAPE = (4, VIEW_SIZE + 1, VIEW_SIZE + 1)
 
     ACTION_SHAPE = (8,)

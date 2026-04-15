@@ -38,7 +38,7 @@ def calculate_relative_direction(hero_pos, target_pos):
 
     计算英雄到目标的相对方向。
     返回值：方向索引 (1-8)，对应8个方向
-    1: 北, 2: 东北, 3: 东, 4: 南, 5: 西南, 6: 西, 7: 西北, 8: 东南
+    1: 北, 2: 东北, 3: 东, 4: 东南, 5: 南, 6: 西南, 7: 西, 8: 西北
     """
     dx = target_pos[0] - hero_pos[0]
     dz = target_pos[1] - hero_pos[1]
@@ -50,25 +50,25 @@ def calculate_relative_direction(hero_pos, target_pos):
     # 计算象限和方向
     if dx > 0 and dz > 0:
         # 东南方向
-        return 8
+        return 4
     elif dx > 0 and dz < 0:
         # 东北方向
         return 2
     elif dx < 0 and dz > 0:
         # 西南方向
-        return 5
+        return 6
     elif dx < 0 and dz < 0:
         # 西北方向
-        return 7
+        return 8
     elif dx > 0:
         # 东方向
         return 3
     elif dx < 0:
         # 西方向
-        return 6
+        return 7
     elif dz > 0:
         # 南方向
-        return 4
+        return 5
     else:
         # 北方向
         return 1
@@ -319,13 +319,32 @@ def test_direction_calculation():
     monster_pos = (12, 12)
     direction = calculate_relative_direction(hero_pos, monster_pos)
     
-    # 预期方向：东南（8）
+    # 预期方向：东南（4）
     print(f"英雄位置: {hero_pos}")
     print(f"怪物位置: {monster_pos}")
     print(f"计算出的方向索引: {direction}")
-    print(f"预期方向索引: 8 (东南)")
-    print(f"测试结果: {'通过' if direction == 8 else '失败'}")
+    print(f"预期方向索引: 4 (东南)")
+    print(f"测试结果: {'通过' if direction == 4 else '失败'}")
     print()
+    
+    # 测试其他方向
+    test_cases = [
+        ((10, 10), (12, 8), 2, "东北"),   # dx>0, dz<0
+        ((10, 10), (8, 12), 6, "西南"),    # dx<0, dz>0
+        ((10, 10), (8, 8), 8, "西北"),      # dx<0, dz<0
+        ((10, 10), (12, 10), 3, "东"),      # dx>0, dz=0
+        ((10, 10), (8, 10), 7, "西"),       # dx<0, dz=0
+        ((10, 10), (10, 12), 5, "南"),      # dx=0, dz>0
+        ((10, 10), (10, 8), 1, "北"),       # dx=0, dz<0
+        ((10, 10), (10, 10), 1, "北")        # 相同位置
+    ]
+    
+    for hero, target, expected, desc in test_cases:
+        dir_idx = calculate_relative_direction(hero, target)
+        result = "通过" if dir_idx == expected else "失败"
+        print(f"英雄位置: {hero}, 目标位置: {target}, 方向: {desc}")
+        print(f"计算出的方向索引: {dir_idx}, 预期: {expected}, 测试结果: {result}")
+        print()
 
 
 def test_flash_pathfinding():

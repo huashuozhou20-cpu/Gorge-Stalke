@@ -13,17 +13,19 @@ Configuration for Gorge Chase PPO.
 
 class Config:
 
-    # Feature dimensions / 特征维度（共40维）
+    # Feature dimensions / 特征维度（共79维）
+    # hero: 4D, monster: 5D*2, treasure: 6D, map: 49D, legal: 8D, progress: 2D
     FEATURES = [
         4,
         5,
         5,
-        16,
+        6,
+        49,
         8,
         2,
     ]
     FEATURE_SPLIT_SHAPE = FEATURES
-    FEATURE_LEN = sum(FEATURE_SPLIT_SHAPE)
+    FEATURE_LEN = sum(FEATURES)
     DIM_OF_OBSERVATION = FEATURE_LEN
 
     # Action space / 动作空间：8个移动方向
@@ -40,3 +42,11 @@ class Config:
     CLIP_PARAM = 0.2
     VF_COEF = 1.0
     GRAD_CLIP_RANGE = 0.5
+
+    # Model architecture / 模型架构参数
+    HIDDEN_DIM1 = 256
+    HIDDEN_DIM2 = 128
+    MID_DIM = 64
+
+    # Training workflow / 训练工作流参数
+    MODEL_LOAD_INTERVAL = 10  # 每10局加载一次模型
