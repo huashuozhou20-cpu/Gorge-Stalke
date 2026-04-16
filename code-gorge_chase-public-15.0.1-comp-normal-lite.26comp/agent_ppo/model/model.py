@@ -40,22 +40,16 @@ class Model(nn.Module):
         self.device = device
 
         input_dim = Config.DIM_OF_OBSERVATION
-        hidden_dim1 = 256
-        hidden_dim2 = 128
+        hidden_dim = 128
         mid_dim = 64
         action_num = Config.ACTION_NUM
         value_num = Config.VALUE_NUM
 
         # Shared backbone / 共享骨干网络
         self.backbone = nn.Sequential(
-            make_fc_layer(input_dim, hidden_dim1),
-            nn.LayerNorm(hidden_dim1),
+            make_fc_layer(input_dim, hidden_dim),
             nn.ReLU(),
-            make_fc_layer(hidden_dim1, hidden_dim2),
-            nn.LayerNorm(hidden_dim2),
-            nn.ReLU(),
-            make_fc_layer(hidden_dim2, mid_dim),
-            nn.LayerNorm(mid_dim),
+            make_fc_layer(hidden_dim, mid_dim),
             nn.ReLU(),
         )
 

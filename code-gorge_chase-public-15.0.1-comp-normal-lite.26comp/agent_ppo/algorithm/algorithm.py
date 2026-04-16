@@ -52,10 +52,9 @@ class Algorithm:
         act = torch.stack([f.act for f in list_sample_data]).to(self.device).view(-1, 1)
         old_prob = torch.stack([f.prob for f in list_sample_data]).to(self.device)
         reward = torch.stack([f.reward for f in list_sample_data]).to(self.device)
+        advantage = torch.stack([f.advantage for f in list_sample_data]).to(self.device)
         old_value = torch.stack([f.value for f in list_sample_data]).to(self.device)
-        
-        # 计算GAE优势函数
-        advantage, reward_sum = self._compute_gae(list_sample_data)
+        reward_sum = torch.stack([f.reward_sum for f in list_sample_data]).to(self.device)
 
         self.model.set_train_mode()
         self.optimizer.zero_grad()
@@ -158,36 +157,3 @@ class Algorithm:
         label = label * legal_action
         label = label + 1e5 * (legal_action - 1)
         return torch.nn.functional.softmax(label, dim=1)
-
-    def _compute_gae(self, list_sample_data):
-        """Compute GAE (Generalized Advantage Estimation).
-
-        计算广义优势估计（GAE）。
-        """
-        gamma = Config.GAMMA
-        lamda = Config.LAMDA
-        gae = 0.0
-        advantages = []
-        reward_sums = []
-        
-        # 从后往前计算GAE
-        for i in reversed(range(len(list_sample_data))):
-            sample = list_sample_data[i]
-            if i == len(list_sample_data) - 1:
-                next_value = torch.zeros_like(sample.value)
-            else:
-                next_value = list_sample_data[i + 1].value
-            
-            delta = sample.reward + gamma * next_value - sample.value
-            gae = delta + gamma * lamda * gae
-            advantages.insert(0, gae)
-            reward_sums.insert(0, gae + sample.value)
-        
-        # 转换为张量
-        advantage = torch.stack(advantages).to(self.device)
-        reward_sum = torch.stack(reward_sums).to(self.device)
-        
-        # 优势函数归一化
-        advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
-        
-        return advantage, reward_sum

@@ -125,12 +125,10 @@ class Agent(BaseAgent):
         """Unpack ActData to int action and update last_action.
 
         解包 ActData 为 int 动作并记录 last_action。
-        支持 0-15 维动作空间：0-7 为移动动作，8-15 为闪现动作
         """
         action = act_data.action if is_stochastic else act_data.d_action
-        action_int = int(action[0])
-        self.last_action = action_int
-        return action_int
+        self.last_action = int(action[0])
+        return int(action[0])
 
     def _run_model(self, feature, legal_action):
         """Run model inference, return logits, value, prob.
